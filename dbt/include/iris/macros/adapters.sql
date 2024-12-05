@@ -114,8 +114,7 @@ dbt docs: https://docs.getdbt.com/docs/contributing/building-a-new-adapter
 
   {{ sql_header if sql_header is not none }}
   /* create_view_as */
-  {# create or replace view {{ relation }} #}
-  create table {{ relation }}
+  create or replace view {{ relation }}
   as {{ sql }}
 
 {%- endmacro %}
@@ -145,10 +144,38 @@ dbt docs: https://docs.getdbt.com/docs/contributing/building-a-new-adapter
 
 {% macro iris__rename_relation(from_relation, to_relation) -%}
   {% set target_name = adapter.quote_as_configured(to_relation.identifier, 'identifier') %}
-  {% call statement('drop_relation') %}
-    drop table if exists {{ to_relation }} cascade
+  {%- if from_relation.is_view -%}
+    {% call statement('rename_relation') -%}
+      {%- set sql = iris__get_view_definition(from_relation) -%}
+      create or replace view {{ to_relation }} as {{ sql }}
+    {%- endcall %}
+    {% call statement('drop_relation') %}
+      drop view if exists {{ from_relation }} cascade
+    {% endcall %}
+  {%- else -%}
+    {% call statement('drop_relation') %}
+      drop table if exists {{ to_relation }} cascade
+    {% endcall %}
+    {% call statement('rename_relation') -%}
+      alter table {{ from_relation }} rename {{ target_name }}
+    {%- endcall %}
+  {%- endif -%}
+{% endmacro %}
+
+{% macro iris__get_view_definition(relation) -%}
+  {# TODO: figure out how to parse SELECT out of information_schema.views #}
+  {% call statement('get_view_definition', fetch_result=True) %}
+      select 
+        ViewQuery 
+      from 
+        %Dictionary.CompiledClass 
+      where 
+        name = (
+          select 
+              classname
+          from information_schema.views
+          where table_name = '{{ relation.identifier }}'
+            and table_schema = '{{ relation.schema if relation.schema else "SQLUser" }}')
   {% endcall %}
-  {% call statement('rename_relation') -%}
-    alter table {{ from_relation }} rename {{ target_name }}
-  {%- endcall %}
+  {{ return(load_result('get_view_definition').data[0][0]) }}
 {% endmacro %}
