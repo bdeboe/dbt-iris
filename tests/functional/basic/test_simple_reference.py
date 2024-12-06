@@ -111,7 +111,7 @@ view_summary_sql = """
 
 select gender, count(*) as ct from {{ref('view_copy')}}
 group by gender
-order by gender asc
+-- order by gender asc    -- ORDER BY not permitted for views
 """
 
 view_using_ref_sql = """
@@ -123,7 +123,7 @@ view_using_ref_sql = """
 
 select gender, count(*) as ct from {{ var('var_ref') }}
 group by gender
-order by gender asc
+-- order by gender asc    -- ORDER BY not permitted for views
 """
 
 properties_yml = """
