@@ -145,13 +145,15 @@ dbt docs: https://docs.getdbt.com/docs/contributing/building-a-new-adapter
 {% macro iris__rename_relation(from_relation, to_relation) -%}
   {% set target_name = adapter.quote_as_configured(to_relation.identifier, 'identifier') %}
   {%- if from_relation.is_view -%}
-    {% call statement('rename_relation') -%}
-      {%- set sql = iris__get_view_definition(from_relation) -%}
-      create or replace view {{ to_relation }} as {{ sql }}
-    {%- endcall %}
-    {% call statement('drop_relation') %}
-      drop view if exists {{ from_relation }} cascade
-    {% endcall %}
+    {%- set viewdef = iris__get_view_definition(from_relation) -%}
+    {%- if (viewdef | length) > 0 and (viewdef[0] | length) > 0 -%}
+      {% call statement('rename_relation') -%}
+        create or replace view {{ to_relation }} as {{ viewdef[0][0] }}
+      {%- endcall %}
+      {% call statement('drop_relation') %}
+        drop view if exists {{ from_relation }} cascade
+      {% endcall %}
+    {%- endif -%}
   {%- else -%}
     {% call statement('drop_relation') %}
       drop table if exists {{ to_relation }} cascade
@@ -177,5 +179,5 @@ dbt docs: https://docs.getdbt.com/docs/contributing/building-a-new-adapter
           where table_name = '{{ relation.identifier }}'
             and table_schema = '{{ relation.schema if relation.schema else "SQLUser" }}')
   {% endcall %}
-  {{ return(load_result('get_view_definition').data[0][0]) }}
+  {{ return(load_result('get_view_definition').data) }}
 {% endmacro %}
