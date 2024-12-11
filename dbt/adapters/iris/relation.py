@@ -28,6 +28,7 @@ class IRISRelation(BaseRelation):
         default_factory=lambda: frozenset(
             {
                 RelationType.Table,
+                RelationType.View,
             }
         )
     )
