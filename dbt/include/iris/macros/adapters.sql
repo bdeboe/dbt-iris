@@ -147,6 +147,9 @@ dbt docs: https://docs.getdbt.com/docs/contributing/building-a-new-adapter
   {%- if from_relation.is_view -%}
     {%- set viewdef = iris__get_view_definition(from_relation) -%}
     {%- if (viewdef | length) > 0 and (viewdef[0] | length) > 0 -%}
+      {% call statement('drop_relation') %}
+        drop view if exists {{ to_relation }} cascade
+      {% endcall %}
       {% call statement('rename_relation') -%}
         create or replace view {{ to_relation }} as {{ viewdef[0][0] }}
       {%- endcall %}
